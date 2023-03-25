@@ -1,7 +1,35 @@
 <RequestTabGlobals>:
     icon: "web-plus"
     title: "Globals"
-    MDIconButton:
-        icon: "archive-outline"
-        icon_size: "48sp"
-        pos_hint: {"center_x": .5, "center_y": .5}
+
+    MDGridLayout:
+        size_hint: 1, 1
+        rows: 2
+        padding: 0
+
+        RelativeLayout:
+            size_hint: 1, None
+            height: 60
+
+            MDBoxLayout:
+                pos_hint: {"x": .96, "y": 0}
+                size_hint: 1, None
+                spacing: 10
+                orientation: "horizontal"
+
+                MDFloatingActionButton:
+                    size_hint: None, None
+                    icon: "plus-circle-outline"
+                    type: "small"
+                    md_bg_color: app.theme_cls.primary_color
+                    on_release: app.add_global(root)
+
+        ScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
+            size_hint: 1, 1
+
+            MDStackLayout:
+                id: globals
+                size_hint: 1, 1.2
+                orientation: 'tb-lr'

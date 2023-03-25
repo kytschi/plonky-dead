@@ -97,8 +97,10 @@ class MainApp(MDApp):
     projects = []
     speed_menu = {}
     rail_height = 200
-    request_params_count = 1
     project_changed = False
+
+    request_tab_globals = None
+    request_tab_params = None
 
     def build(self):
         self.title = "Plonky"
@@ -118,13 +120,14 @@ class MainApp(MDApp):
     def on_start(self):
         # Build request tabs
         self.request_tab_params = RequestTabParams()
-        #self.request_tab_params.ids.request_params.add_widget(RequestTabParamsListItem(id=self.random_string()))
         self.root.ids.request_tabs.add_widget(self.request_tab_params)
 
         self.root.ids.request_tabs.add_widget(RequestTabAuth())
         self.root.ids.request_tabs.add_widget(RequestTabHeaders())
         self.root.ids.request_tabs.add_widget(RequestTabBody())
-        self.root.ids.request_tabs.add_widget(RequestTabGlobals())
+
+        self.request_tab_globals = RequestTabGlobals()
+        self.root.ids.request_tabs.add_widget(self.request_tab_globals)
 
         # Build response tabs
         self.root.ids.response_tabs.add_widget(ResponseTabBody())
@@ -413,6 +416,15 @@ class MainApp(MDApp):
             )
 
         self.request_tab_params.ids.request_params.clear_widgets()
+        self.request_tab_globals.ids.globals.clear_widgets()
+
+        for param in project["globals"]:
+            request_param = RequestTabParamsListItem()
+            request_param.ids.param_key.text = param["key"]
+            request_param.ids.param_value.text = param["value"]
+            request_param.ids.param_active.active = param["active"]
+            request_param.ids.param_active.bind(active=self.on_request_param_change)
+            self.request_tab_globals.ids.globals.add_widget(request_param)
         
     def cancel_add_project(self, *args):
         self.reset_add_project()
@@ -545,6 +557,9 @@ class MainApp(MDApp):
                         self.create_toast(f"Failed to load the project json for {file}", "error")
                         print(f"Unexpected {err=}, {type(err)=}")
 
+        if self.selected_project:
+            self.select_project(self.selected_project)
+
     # Prompt before deleting the project
     def project_save_prompt(self, from_func, arg):
         self.alert = MDDialog(
@@ -584,20 +599,34 @@ class MainApp(MDApp):
         self.project_changed = False
         project = json.loads(self.selected_project.json)
         
-        collection_id = self.selected_collection.id
-        if self.request_tab_params.ids.request_params.children:
-            for collection in project["collections"]:
-                if collection_id == collection["id"]:
-                    for collection_item in collection["items"]:
-                        if collection_item["id"] == self.selected_request.id:
-                            collection_item["params"] = []
-                            for param in self.request_tab_params.ids.request_params.children:
-                                if param.ids.param_key.text and param.ids.param_value.text:
-                                    collection_item["params"].append({
-                                        "key": param.ids.param_key.text,
-                                        "value": param.ids.param_value.text,
-                                        "active": param.ids.param_active.active
-                                    })
+        if self.selected_collection:
+            try:
+                collection_id = self.selected_collection.id
+                if self.request_tab_params.ids.request_params.children:
+                    for collection in project["collections"]:
+                        if collection_id == collection["id"]:
+                            for collection_item in collection["items"]:
+                                if collection_item["id"] == self.selected_request.id:
+                                    collection_item["params"] = []
+                                    for param in self.request_tab_params.ids.request_params.children:
+                                        if param.ids.param_key.text and param.ids.param_value.text:
+                                            collection_item["params"].append({
+                                                "key": param.ids.param_key.text,
+                                                "value": param.ids.param_value.text,
+                                                "active": param.ids.param_active.active
+                                            })
+            except:
+                self.create_toast("Failed save the request parameters", "error")
+
+        if self.request_tab_globals.ids.globals.children:
+            project["globals"] = []
+            for param in self.request_tab_globals.ids.globals.children:
+                if param.ids.param_key.text and param.ids.param_value.text:
+                    project["globals"].append({
+                        "key": param.ids.param_key.text,
+                        "value": param.ids.param_value.text,
+                        "active": param.ids.param_active.active
+                    })
 
         file = project["file"]
         del project["file"]
@@ -647,7 +676,7 @@ class MainApp(MDApp):
         self.build_project_ui(project)
 
         self.root.ids.projects_drawer.set_state("close")
-
+        
         self.create_toast(f"Project {project['name']} selected")
 
     def select_project_collection(self, collection):
@@ -665,17 +694,22 @@ class MainApp(MDApp):
         self.request_tab_params.ids.request_params.clear_widgets()
 
         collection_id = self.selected_collection.id
-        for collection in project["collections"]:
-            if collection_id == collection["id"]:
-                for collection_item in collection["items"]:
-                    print(collection_item["params"])
-                    if collection_item["id"] == item.id:
-                        for param in collection_item["params"]:
-                            request_param = RequestTabParamsListItem()
-                            request_param.ids.param_key.text = param["key"]
-                            request_param.ids.param_value.text = param["value"]
-                            request_param.ids.param_active.active = param["active"]
-                            self.request_tab_params.ids.request_params.add_widget(request_param)
+        try:
+            for collection in project["collections"]:
+                if collection_id == collection["id"]:
+                    for collection_item in collection["items"]:
+                        if collection_item["id"] == item.id:
+                            for param in collection_item["params"]:
+                                request_param = RequestTabParamsListItem()
+                                request_param.ids.param_key.text = param["key"]
+                                request_param.ids.param_value.text = param["value"]
+                                request_param.ids.param_active.active = param["active"]
+                                request_param.ids.param_active.bind(active=self.on_request_param_change)
+                                self.request_tab_params.ids.request_params.add_widget(request_param)
+        except:
+            if not collection_item is None:
+                collection_item["params"] = []
+            self.create_toast("Failed to load request parameters", "error")
 
 #--- END Project ---
     
@@ -683,7 +717,7 @@ class MainApp(MDApp):
 
     # Add a request parameter to the project
     def add_request_param(self, btn):
-        if not self.selected_request:
+        if not self.selected_project:
             self.create_toast("No request option selected", "error")
             return
         self.request_tab_params.ids.request_params.add_widget(RequestTabParamsListItem(id=self.selected_request.id))
@@ -693,10 +727,23 @@ class MainApp(MDApp):
         self.request_tab_params.ids.request_params.remove_widget(item)    
 
     # When a request parameter is changed
-    def on_request_param_change(self):
+    def on_request_param_change(self, checkbox = None, value = None):
         self.project_changed = True
+        print("here")
     
 #--- END Request params ---
+
+#--- Globals ---
+
+    # Add a request parameter to the project
+    def add_global(self, btn):
+        if not self.selected_project:
+            self.create_toast("No project selected", "error")
+            return
+        print(self.selected_project)
+        self.request_tab_globals.ids.globals.add_widget(RequestTabParamsListItem(id=self.selected_project.id))
+
+#--- END Globals ---
 
 
 if __name__ == '__main__':
