@@ -1,0 +1,155 @@
+<App>:
+    MDScreen:
+        size: root.size
+        size_hint: 1, 1
+        
+        MDNavigationLayout:
+            MDScreenManager:
+                MDScreen:
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        size_hint: 1, 1
+                        elevation: 4
+                        pos_hint: {'top': 1}
+
+                        MDNavigationRail:
+                            on_item_release: app.rail_select(*args)
+
+                            MDNavigationRailItem:
+                                text: "Home"
+                                icon: "home-outline"
+
+                            MDNavigationRailItem:
+                                text: "Projects"
+                                icon: "archive-outline"
+
+                        BoxLayout:
+                            orientation: 'horizontal'
+                            size_hint: 1, 1
+
+                            BoxLayout:
+                                id: project_screen
+                                size_hint: None, 1
+                                width: "400dp"
+                                orientation: 'vertical'
+
+                                MDTopAppBar:
+                                    id: current_project
+                                    size_hint: 1, None
+                                    anchor_title: "left"
+                                    title: "Please select a project"
+
+                                ScrollView:
+                                    do_scroll_x: False
+                                    do_scroll_y: True
+                                    
+                                    BoxLayout:
+                                        size_hint: 1, 1.2
+                                                                                
+                                        MDStackLayout:
+                                            id: project
+
+                            BoxLayout:
+                                size_hint: 1, 1
+                                id: screen
+                                orientation: 'vertical'
+                                
+                                MDTopAppBar:
+                                    id: current_project_item
+                                    size_hint: 1, None
+                                    anchor_title: "left"
+                                    title: "Request"
+                                    pos_hint: {'top': 1}
+                                    right_action_items: [["content-save-outline", lambda x: app.save_project()], ["send-circle", lambda x: app.trigger_send()]]
+                        
+                                BoxLayout:
+                                    size_hint: 1, None
+                                    orientation: 'horizontal'
+                                    padding: 0, 15, 15, 0
+
+                                    BoxLayout:
+                                        size_hint: None, None
+                                        width: "180dp"
+                                        padding: 20, 34, 20, 0
+                                        
+                                        MDDropDownItem:
+                                            id: request_type
+                                            hint_text: "GET"
+                                            text: "GET"
+                                            size_hint: 1, None
+                                            pos_hint: {'top': 1}
+                                            on_release: app.request_type_menu.open()
+
+                                    MDTextField:
+                                        id: request_url
+                                        hint_text: "Please enter the URL"
+                                        size_hint: .7, None
+                                        pos_hint: {'top': 1}
+
+                                Splitter:
+                                    sizable_from: 'bottom'
+                                    size_hint: 1, .3
+
+                                    MDTabs:
+                                        id: request_tabs
+                                    
+                                MDStackLayout:
+                                    id: api
+                                    orientation: 'tb-lr'
+                                    size_hint: 1, .7
+                                    MDTabs:
+                                        id: response_tabs
+
+            MDNavigationDrawer:
+                id: projects_drawer
+                radius: (0, 16, 16, 0)
+                size_hint: None, 1
+
+                ContentNavigationDrawer:
+                    BoxLayout:
+                        size_hint: 1, 1
+                        orientation: 'vertical'
+
+                        MDLabel:
+                            size_hint: 1, None
+                            text: "Projects"
+
+                        ScrollView:
+                            do_scroll_x: False
+                            do_scroll_y: True
+                            size_hint: 1, 1
+
+                            BoxLayout:
+                                size_hint: 1, 1.2
+
+                                MDStackLayout:
+                                    id: rail
+                                    padding: 10
+                                    spacing: 10
+
+            MDNavigationDrawer:
+                id: project_drawer
+                radius: (0, 16, 16, 0)
+                size_hint: None, 1
+
+                ContentNavigationDrawer:
+                    MDStackLayout:
+                        orientation: 'tb-lr'
+
+                        BoxLayout:
+                            size_hint: 1, None
+                            orientation: 'horizontal'
+
+                            MDFloatingActionButton:
+                                icon: 'delete-forever-outline'
+                                md_bg_color: app.theme_cls.primary_color
+                                on_press: app.delete_project_prompt()
+
+                        MDLabel:
+                            size_hint: 1, None
+                            text: "Edit project"
+
+        MDFloatingActionButtonSpeedDial:
+            id: speed_dial
+            data: app.speed_menu
+            root_button_anim: True

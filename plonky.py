@@ -1,0 +1,681 @@
+'''
+Plonky - the drunken RESTful API tool
+'''
+from kivy.lang import Builder
+from kivymd.app import MDApp
+
+from kivy.metrics import dp
+from kivy.properties import StringProperty, BooleanProperty
+from kivymd.uix.button import MDFlatButton
+from kivymd.uix.dialog import MDDialog
+from kivy.uix.widget import Widget
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.label import MDLabel
+from kivymd.uix.list import OneLineListItem, TwoLineAvatarIconListItem, IconLeftWidget, IconRightWidget
+from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.card import MDCard
+from kivymd.uix.expansionpanel import MDExpansionPanel, MDExpansionPanelOneLine
+from kivymd.uix.tab import MDTabsBase
+from kivymd.uix.floatlayout import MDFloatLayout
+from kivymd.uix.snackbar import MDSnackbar
+import os, json, string, random
+
+#Project
+Builder.load_file('kvs/project/add.kv')
+Builder.load_file('kvs/project/card.kv')
+Builder.load_file('kvs/project/collection.kv')
+Builder.load_file('kvs/project/collection_item.kv')
+Builder.load_file('kvs/project/language_selection.kv')
+
+class AddProject(MDBoxLayout):
+    pass
+
+class LanguageSelection(OneLineListItem):
+    pass
+
+class ProjectCard(MDCard):
+    selected = BooleanProperty()
+    json = StringProperty()
+    file = StringProperty()
+    text = StringProperty()
+    name = StringProperty()
+    icon = StringProperty()
+
+class ProjectCollection(MDBoxLayout):
+    pass
+
+class ProjectCollectionItem(MDBoxLayout):
+    pass
+
+# Request box
+Builder.load_file('kvs/request/tabs/params.kv')
+Builder.load_file('kvs/request/tabs/auth.kv')
+Builder.load_file('kvs/request/tabs/headers.kv')
+Builder.load_file('kvs/request/tabs/body.kv')
+Builder.load_file('kvs/request/tabs/globals.kv')
+
+class RequestTabParams(MDFloatLayout, MDTabsBase):
+    pass
+class RequestTabParamsListItem(MDBoxLayout):
+    pass
+
+class RequestTabAuth(MDFloatLayout, MDTabsBase):
+    pass
+class RequestTabBody(MDFloatLayout, MDTabsBase):
+    pass
+class RequestTabHeaders(MDFloatLayout, MDTabsBase):
+    pass
+class RequestTabGlobals(MDFloatLayout, MDTabsBase):
+    pass
+
+# Response box
+Builder.load_file('kvs/response/tabs/body.kv')
+Builder.load_file('kvs/response/tabs/headers.kv')
+
+class ResponseTabBody(MDFloatLayout, MDTabsBase):
+    pass
+class ResponseTabHeaders(MDFloatLayout, MDTabsBase):
+    pass
+
+Builder.load_file('kvs/app.kv')
+
+class ContentNavigationDrawer(MDBoxLayout):
+    pass
+
+class App(Widget):
+    pass
+
+class MainApp(MDApp):
+    add_project_dialog = None
+    alert = None
+    cfg_folder = "cfg/"
+    projects_folder = "projects/"
+    selected_icon = "application-outline"
+    selected_collection = None
+    selected_project = None
+    selected_request = None
+    projects = []
+    speed_menu = {}
+    rail_height = 200
+    request_params_count = 1
+    project_changed = False
+
+    def build(self):
+        self.title = "Plonky"
+        self.theme_cls.material_style = "M3"
+        self.theme_cls.theme_style = "Dark"
+        self.theme_cls.primary_palette = "DeepPurple"
+
+        self.speed_menu = {
+            'Add project': [
+                'shape-square-rounded-plus',
+                "on_press", lambda x: self.add_project()
+            ]
+        }
+
+        return App()
+
+    def on_start(self):
+        # Build request tabs
+        self.request_tab_params = RequestTabParams()
+        #self.request_tab_params.ids.request_params.add_widget(RequestTabParamsListItem(id=self.random_string()))
+        self.root.ids.request_tabs.add_widget(self.request_tab_params)
+
+        self.root.ids.request_tabs.add_widget(RequestTabAuth())
+        self.root.ids.request_tabs.add_widget(RequestTabHeaders())
+        self.root.ids.request_tabs.add_widget(RequestTabBody())
+        self.root.ids.request_tabs.add_widget(RequestTabGlobals())
+
+        # Build response tabs
+        self.root.ids.response_tabs.add_widget(ResponseTabBody())
+        self.root.ids.response_tabs.add_widget(ResponseTabHeaders())
+
+        # Build the request type menu
+        self.request_type_menu = MDDropdownMenu(
+            caller = self.root.ids.request_type,
+            items = [
+            {
+                "viewclass": "OneLineListItem",
+                "text": "GET",
+                "height": dp(56),
+                "on_release": lambda x="GET": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "POST",
+                "height": dp(56),
+                "on_release": lambda x="POST": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "PUT",
+                "height": dp(56),
+                "on_release": lambda x="PUT": self.change_type(x),
+            }
+            ,
+            {
+                "viewclass": "OneLineListItem",
+                "text": "PATCH",
+                "height": dp(56),
+                "on_release": lambda x="PATCH": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "DELETE",
+                "height": dp(56),
+                "on_release": lambda x="DELETE": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "COPY",
+                "height": dp(56),
+                "on_release": lambda x="COPY": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "HEAD",
+                "height": dp(56),
+                "on_release": lambda x="HEAD": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "OPTIONS",
+                "height": dp(56),
+                "on_release": lambda x="OPTIONS": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "LINK",
+                "height": dp(56),
+                "on_release": lambda x="LINK": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "UNLINK",
+                "height": dp(56),
+                "on_release": lambda x="UNLINK": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "PURGE",
+                "height": dp(56),
+                "on_release": lambda x="PURGE": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "LOCK",
+                "height": dp(56),
+                "on_release": lambda x="LOCK": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "UNLOCK",
+                "height": dp(56),
+                "on_release": lambda x="UNLOCK": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "PROPFIND",
+                "height": dp(56),
+                "on_release": lambda x="PROPFIND": self.change_type(x),
+            },
+            {
+                "viewclass": "OneLineListItem",
+                "text": "VIEW",
+                "height": dp(56),
+                "on_release": lambda x="VIEW": self.change_type(x),
+            }
+        ],
+            position = "center",
+            width_mult = 4,
+        )
+        self.request_type_menu.bind()
+
+        self.load_projects()
+
+    def change_type(self, type):
+        self.root.ids.request_type.set_item(type)
+        self.request_type_menu.dismiss()
+
+    def create_alert(self, title, text):
+        self.alert = MDDialog(
+            title = title,
+            text = text,
+            buttons =[
+                MDFlatButton(
+                    text = "CANCEL",
+                    theme_text_color = "Custom",
+                    text_color = self.theme_cls.primary_color,
+                    on_release = self.close_alert
+                ),
+                MDFlatButton(
+                    text = "OK",
+                    theme_text_color = "Custom",
+                    text_color = self.theme_cls.primary_color,
+                    on_release = self.close_alert
+                ),
+            ],
+        )
+
+        self.alert.open()
+
+    def create_toast(self, text, type = "normal"):
+        if (type == "error"):
+            bg_colour = "#B00020"
+            text_color = "white"
+        elif (type == "warning"):
+            bg_colour = "#FFDE03"
+            text_color = "black"
+        else:
+            bg_colour = self.theme_cls.primary_color
+            text_color = "white"
+
+        MDSnackbar(
+            MDLabel(
+                text = text,                
+                theme_text_color = "Custom",
+                text_color = text_color
+            ),
+            y = dp(24),
+            pos_hint = {"center_x": 0.5},
+            size_hint_x = 0.5,
+            md_bg_color = bg_colour
+        ).open()
+
+    def close_alert(self, *args):
+        self.alert.dismiss()
+        self.alert = None
+
+    # Generate a random string, used for IDs and filenames
+    def random_string(self):
+        return ''.join(random.choice(string.ascii_lowercase) for i in range(24))
+
+    # Select from the navigation
+    def rail_select(self, instance_navigation_rail, instance_navigation_rail_item):
+        if instance_navigation_rail_item.text.lower() == "projects":
+            self.root.ids.projects_drawer.set_state("open")
+
+    def trigger_send(self):
+        print("send")
+
+#--- Project ---
+
+    def add_project_to_rail(self, project):
+        card = ProjectCard(
+            selected = False,
+            json = json.dumps(project),
+            text = project["name"],
+            file = project["file"],
+            icon = project["icon"]
+        )
+        self.root.ids.rail.add_widget(card)
+        self.selected_project = card
+        
+    def add_project(self):
+        if not self.add_project_dialog:
+            layout = AddProject()
+
+            #Load the JSON for the selection
+            with open(self.cfg_folder + "language_selection.json") as file_json:
+                menu_items = json.load(file_json)
+            for item in menu_items:
+                item["height"] =  dp(56)
+                item["viewclass"] = "LanguageSelection"
+                item["on_release"] = lambda x=item["text"], icon=item["icon"]: self.add_project_lang_selected(x, icon)
+
+            #Generate the language selection box
+            self.lang_selection_menu = MDDropdownMenu(
+                caller = layout.ids.drop_item,
+                items = menu_items,
+                position = "center",
+                width_mult = 4,
+            )
+            self.lang_selection_menu.bind()
+
+            #Build the Add new project dialog box
+            self.add_project_dialog = MDDialog(
+                title = "Add new project",
+                content_cls = layout,
+                type = "custom",
+                buttons = [
+                    MDFlatButton(
+                        text = "CANCEL",
+                        theme_text_color = "Custom",
+                        text_color = self.theme_cls.primary_color,
+                        on_release = self.cancel_add_project
+                    ),
+                    MDFlatButton(
+                        text = "OK",
+                        theme_text_color = "Custom",
+                        text_color = self.theme_cls.primary_color,
+                        on_release = self.create_project
+                    )
+                ]
+            )
+        self.add_project_dialog.open()
+
+    def add_project_collection(self):
+        print("add collection")
+
+    def add_project_collection_item(self, id):
+        print("add collection item")
+
+    def add_project_lang_selected(self, text_item, icon):
+        self.add_project_dialog.content_cls.ids.drop_item.set_item(text_item)
+        self.selected_icon = icon
+        self.lang_selection_menu.dismiss()
+
+    # Build the project UI, the collections, etc
+    def build_project_ui(self, project):
+        self.root.ids.project.clear_widgets()
+        for collection_data in project["collections"]:
+            collection = ProjectCollection()
+                        
+            for item_data in collection_data["items"]:
+                if item_data["type"].upper() == "POST":
+                    icon_type = "upload-outline"
+                else:
+                    icon_type = "download-outline"
+                
+                item = ProjectCollectionItem()
+                item.add_widget(
+                    TwoLineAvatarIconListItem(
+                        IconLeftWidget(
+                            icon = icon_type
+                        ),
+                        IconRightWidget(
+                            icon = "close",
+                            on_release = lambda x, id=item_data["id"]: self.delete_project_collection_item_promt(id)
+                        ),
+                        id = item_data["id"],
+                        text = item_data["name"],
+                        secondary_text = item_data["type"].upper(),
+                        on_release = lambda x,
+                            title = f"{collection_data['name']} > {item_data['name']}",
+                            type = item_data["type"].upper(),
+                            url = item_data["url"]:
+                                self.select_project_item(x, title, type, url)
+                    )
+                )
+
+                collection.ids.collection_items.add_widget(item)
+
+            self.root.ids.project.add_widget(
+                MDExpansionPanel(
+                    
+                    icon = "folder-outline",
+                    content = collection,
+                    panel_cls = MDExpansionPanelOneLine (
+                        text = collection_data['name'],
+                        id = collection_data['id'],
+                        on_release = lambda x: self.select_project_collection(x)
+                    )
+                )
+            )
+
+        self.request_tab_params.ids.request_params.clear_widgets()
+        
+    def cancel_add_project(self, *args):
+        self.reset_add_project()
+        self.add_project_dialog.dismiss()
+
+    def close_save_alert(self, from_func, arg):
+        self.alert.dismiss()
+        self.alert = None
+        self.project_changed = False
+        func = getattr(self, from_func)
+        func(arg)
+
+    def create_project(self, *args):
+        # Random filename
+        filename = self.random_string() + ".json"
+        
+        file = f"{self.projects_folder}" + filename
+        selected_lang = self.selected_icon.replace("language-", "")
+        
+        project = {}
+        project["name"] = self.add_project_dialog.content_cls.ids.text_project.text
+        project["lang"] = selected_lang
+        project["icon"] = self.selected_icon
+        project["project"] = {}
+        
+        # create the project file
+        with open(file, 'w') as fp:
+            fp.write(json.dumps(project))
+
+        project["file"] = file
+        self.projects.append(project)
+
+        self.add_project_to_rail(project)
+
+        self.reset_add_project()
+        self.add_project_dialog.dismiss()
+        self.root.ids.speed_dial.close_stack()
+
+        self.create_toast("Project created")
+        self.project_changed = True
+
+    # Delete the project
+    def delete_project(self, *args):
+        try:
+            if self.selected_project:
+                self.root.ids.rail.remove_widget(self.selected_project)
+                os.remove(self.selected_project.file)
+                self.selected_project = None
+                
+                self.root.ids.current_project.title = "Please select a project"
+                self.root.ids.current_project.right_action_items = []
+                self.root.ids.project.clear_widgets()
+                self.root.ids.project_drawer.set_state("close")
+                self.close_alert()
+
+                self.create_toast("Project deleted")
+        except:
+            self.close_alert()
+            self.create_alert("Delete error", "Failed to delete the project")
+
+    # Delete the collection item from the project
+    def delete_project_collection_item(self, id):
+        self.create_toast(f"Project collection request has been deleted", "warning")
+        self.close_alert()
+
+    # Prompt before deleting the collection item
+    def delete_project_collection_item_promt(self, id):
+        self.alert = MDDialog(
+            title = "Delete collection request",
+            text = "Are you sure?",
+            buttons = [
+                MDFlatButton(
+                    text = "NO",
+                    theme_text_color = "Custom",
+                    text_color = self.theme_cls.primary_color,
+                    on_release = self.close_alert
+                ),
+                MDFlatButton(
+                    text = "YES",
+                    theme_text_color = "Custom",
+                    text_color = self.theme_cls.primary_color,
+                    on_release = lambda x, id = id: self.delete_project_collection_item(id)
+                )
+            ]
+        )
+        self.alert.open()
+
+    # Prompt before deleting the project
+    def delete_project_prompt(self, *args):
+        if self.selected_project:
+            self.alert = MDDialog(
+                title = "Delete project",
+                text = "Are you sure?",
+                buttons = [
+                    MDFlatButton(
+                        text = "NO",
+                        theme_text_color = "Custom",
+                        text_color = self.theme_cls.primary_color,
+                        on_release = self.close_alert
+                    ),
+                    MDFlatButton(
+                        text = "YES",
+                        theme_text_color = "Custom",
+                        text_color = self.theme_cls.primary_color,
+                        on_release = self.delete_project
+                    )
+                ]
+            )
+
+            self.alert.open()
+        else:
+            self.create_alert("Delete error", "No project has been selected")
+
+    # Load the projects from the projects folder
+    def load_projects(self):
+        self.projects = []
+        
+        #Read the projects json files
+        for i, file in enumerate(os.listdir("projects")):
+            if file.endswith(".json"):
+                with open(self.projects_folder + file) as file_json:
+                    try:
+                        project = json.load(file_json)
+                        project["file"] = self.projects_folder + file
+
+                        self.add_project_to_rail(project)
+                        self.projects.append(project)
+
+                    except Exception as err:
+                        self.create_toast(f"Failed to load the project json for {file}", "error")
+                        print(f"Unexpected {err=}, {type(err)=}")
+
+    # Prompt before deleting the project
+    def project_save_prompt(self, from_func, arg):
+        self.alert = MDDialog(
+            title = "Save project",
+            text = "The projec has changed, would you like to save it?",
+            buttons = [
+                MDFlatButton(
+                    text = "NO",
+                    theme_text_color = "Custom",
+                    text_color = self.theme_cls.primary_color,
+                    on_release = lambda x: self.close_save_alert(from_func, arg)
+                ),
+                MDFlatButton(
+                    text = "YES",
+                    theme_text_color = "Custom",
+                    text_color = self.theme_cls.primary_color,
+                    on_release = lambda x: self.save_project(from_func, arg)
+                )
+            ]
+        )
+
+        self.alert.open()
+
+    def reset_add_project(self):
+        self.add_project_dialog.content_cls.ids.text_project.text = ""
+
+    # Save the project
+    def save_project(self, from_func = None, arg = None):
+        if not self.selected_project:
+            self.create_toast("No project to save", "error")
+            return
+        
+        if self.alert:
+            self.alert.dismiss()
+            self.alert = None
+
+        self.project_changed = False
+        project = json.loads(self.selected_project.json)
+        
+        collection_id = self.selected_collection.id
+        if self.request_tab_params.ids.request_params.children:
+            for collection in project["collections"]:
+                if collection_id == collection["id"]:
+                    collection["params"] = []
+                    for param in self.request_tab_params.ids.request_params.children:
+                        if param.ids.param_key.text and param.ids.param_value.text:
+                            collection["params"].append({"key": param.ids.param_key.text, "value": param.ids.param_value.text})
+
+        file = project["file"]
+        del project["file"]
+
+        # create the project file
+        with open(file, 'w') as fp:
+            fp.write(json.dumps(project))
+
+        self.create_toast("Project saved")
+
+        if from_func:
+            func = getattr(self, from_func)
+            func(arg)
+
+    # Select a project from the popout
+    def select_project(self, card):
+        if self.project_changed:
+            self.project_save_prompt("select_project", card)
+            return
+        
+        project = json.loads(card.json)
+        
+        if card.selected:
+            self.create_toast(f"Project {project['name']} already selected", "warning")
+            self.root.ids.projects_drawer.set_state("close")
+            return
+        
+        for child in self.root.ids.rail.children:
+            child.md_bg_color = self.theme_cls.primary_color
+            child.ids.icon.md_bg_color: self.theme_cls.primary_color
+            child.ids.label.color = self.theme_cls.primary_light
+            child.selected = False
+
+        card.md_bg_color = self.theme_cls.primary_light
+        card.ids.icon.md_bg_color: self.theme_cls.primary_light
+        card.ids.label.color = self.theme_cls.primary_dark
+        card.selected = True
+
+        self.root.ids.current_project.title = project["name"]
+        self.root.ids.current_project.right_action_items = [
+            [project["icon"]],
+            ["plus-circle-outline", lambda x: self.add_project_collection()],
+            ["dots-vertical", lambda x: self.root.ids.project_drawer.set_state("open")]
+        ]
+
+        self.selected_project = card
+        self.build_project_ui(project)
+
+        self.root.ids.projects_drawer.set_state("close")
+
+        self.create_toast(f"Project {project['name']} selected")
+
+    def select_project_collection(self, collection):
+        self.selected_collection = collection
+
+    def select_project_item(self, item, title, type, url):
+        self.root.ids.current_project_item.title = title
+        self.root.ids.request_type.set_item(type)
+        self.root.ids.request_url.hint_text = ""
+        self.root.ids.request_url.text = url
+        self.selected_request = item
+
+#--- END Project ---
+    
+#--- Request params ---
+
+    # Add a request parameter to the project
+    def add_request_param(self, btn):
+        if not self.selected_request:
+            self.create_toast("No request option selected", "error")
+            return
+        self.request_tab_params.ids.request_params.add_widget(RequestTabParamsListItem(id=self.selected_request.id))
+
+    # Delete the request parameter
+    def delete_request_param(self, item):
+        self.request_tab_params.ids.request_params.remove_widget(item)    
+
+    # When a request parameter is changed
+    def on_request_param_change(self):
+        self.project_changed = True
+    
+#--- END Request params ---
+
+
+if __name__ == '__main__':
+    MainApp().run()

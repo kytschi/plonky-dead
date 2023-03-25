@@ -1,0 +1,71 @@
+<RequestTabParamsListItem>:
+    id: param_id
+    orientation: "horizontal"
+    size_hint: 1, None
+    spacing: 10
+    height: 55
+
+    MDBoxLayout:
+        padding: 0, 30, 0, 0
+        size_hint: None, None
+        width: "50dp"
+        orientation: "vertical"
+
+        CheckBox:
+            size_hint: 1, 1
+            active: 1
+
+    MDTextField:
+        id: param_key
+        hint_text: "Key"
+        size_hint: .5, None
+        on_text: app.on_request_param_change
+
+    MDTextField:
+        id: param_value
+        hint_text: "Value"
+        size_hint: .5, None
+        on_text: app.on_request_param_change
+
+    MDIconButton:
+        icon: "close"
+        width: "50dp"
+        size_hint: None, None
+        on_release: app.delete_request_param(root)
+
+<RequestTabParams>:
+    icon: "application-braces-outline"
+    title: "Params"
+    padding: 0
+
+    MDGridLayout:
+        size_hint: 1, 1
+        rows: 2
+        padding: 0
+
+        RelativeLayout:
+            size_hint: 1, None
+            height: 60
+
+            MDBoxLayout:
+                pos_hint: {"x": .96, "y": 0}
+                size_hint: 1, None
+                spacing: 10
+                orientation: "horizontal"
+
+                MDFloatingActionButton:
+                    size_hint: None, None
+                    icon: "plus-circle-outline"
+                    type: "small"
+                    md_bg_color: app.theme_cls.primary_color
+                    on_release: app.add_request_param(root)
+
+        ScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
+            size_hint: 1, 1
+
+            MDStackLayout:
+                id: request_params
+                size_hint: 1, 1.2
+                orientation: 'tb-lr'

@@ -1,0 +1,27 @@
+<AddProject>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: "70dp"
+        
+    MDBoxLayout:
+        id: anchor_layout
+        orientation: "vertical"
+        MDTextField:
+            id: text_project
+            hint_text: "Name"
+        MDDropDownItem:
+            id: drop_item
+            hint_text: "Language"
+            text: 'Language'
+            on_release: app.lang_selection_menu.open()
+
+
+<AddCollection>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: "70dp"
+        
+    MDBoxLayout:
+        id: anchor_layout
+        orientation: "vertical"
+    

@@ -1,0 +1,70 @@
+[
+    {
+        "icon": "application-outline",
+        "text": "Generic"
+    },
+    {
+        "icon": "language-c",
+        "text": "C"
+    },
+    {
+        "icon": "language-cpp",
+        "text": "C++"
+    },
+    {
+        "icon": "language-csharp",
+        "text": "C#"
+    },
+    {
+        "icon": "language-go",
+        "text": "Go"
+    },
+    {
+        "icon": "language-haskell",
+        "text": "Haskell"
+    },
+    {
+        "icon": "language-java",
+        "text": "Java"
+    },
+    {
+        "icon": "language-javascript",
+        "text": "JavaScript"
+    },
+    {
+        "icon": "language-kotlin",
+        "text": "Kotlin"
+    },
+    {
+        "icon": "language-lua",
+        "text": "Lua"
+    },
+    {
+        "icon": "language-php",
+        "text": "PHP"
+    },
+    {
+        "icon": "language-python",
+        "text": "Python"
+    },
+    {
+        "icon": "language-r",
+        "text": "R"
+    },
+    {
+        "icon": "language-ruby",
+        "text": "Ruby"
+    },
+    {
+        "icon": "language-ruby-on-rails",
+        "text": "Ruby on Rails"
+    },
+    {
+        "icon": "language-rust",
+        "text": "Rust"
+    },
+    {
+        "icon": "language-swift",
+        "text": "Swift"
+    }
+]

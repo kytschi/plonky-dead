@@ -1,0 +1,28 @@
+<ProjectCard>:
+    padding: 4
+    size_hint: 1, None
+    size: "200dp", "200dp"
+    style: "filled"
+    on_release: app.select_project(self)
+    md_bg_color: app.theme_cls.primary_color
+
+    MDRelativeLayout:
+        FitImage:
+            id: bg_image
+            source: "images/project_default.png"
+            size_hint_y: .55
+            pos_hint: {"top": 1}
+
+        MDIconButton:
+            id: icon
+            icon: root.icon
+            pos_hint: {"top": 1, "right": 1}
+            md_bg_color: app.theme_cls.primary_color
+
+        MDLabel:
+            id: label
+            text: root.text
+            adaptive_size: True
+            color: app.theme_cls.primary_light
+            pos: "12dp", "12dp"
+            bold: True
