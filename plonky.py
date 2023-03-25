@@ -402,7 +402,6 @@ class MainApp(MDApp):
 
             self.root.ids.project.add_widget(
                 MDExpansionPanel(
-                    
                     icon = "folder-outline",
                     content = collection,
                     panel_cls = MDExpansionPanelOneLine (
@@ -589,10 +588,16 @@ class MainApp(MDApp):
         if self.request_tab_params.ids.request_params.children:
             for collection in project["collections"]:
                 if collection_id == collection["id"]:
-                    collection["params"] = []
-                    for param in self.request_tab_params.ids.request_params.children:
-                        if param.ids.param_key.text and param.ids.param_value.text:
-                            collection["params"].append({"key": param.ids.param_key.text, "value": param.ids.param_value.text})
+                    for collection_item in collection["items"]:
+                        if collection_item["id"] == self.selected_request.id:
+                            collection_item["params"] = []
+                            for param in self.request_tab_params.ids.request_params.children:
+                                if param.ids.param_key.text and param.ids.param_value.text:
+                                    collection_item["params"].append({
+                                        "key": param.ids.param_key.text,
+                                        "value": param.ids.param_value.text,
+                                        "active": param.ids.param_active.active
+                                    })
 
         file = project["file"]
         del project["file"]
@@ -654,6 +659,23 @@ class MainApp(MDApp):
         self.root.ids.request_url.hint_text = ""
         self.root.ids.request_url.text = url
         self.selected_request = item
+
+        project = json.loads(self.selected_project.json)
+
+        self.request_tab_params.ids.request_params.clear_widgets()
+
+        collection_id = self.selected_collection.id
+        for collection in project["collections"]:
+            if collection_id == collection["id"]:
+                for collection_item in collection["items"]:
+                    print(collection_item["params"])
+                    if collection_item["id"] == item.id:
+                        for param in collection_item["params"]:
+                            request_param = RequestTabParamsListItem()
+                            request_param.ids.param_key.text = param["key"]
+                            request_param.ids.param_value.text = param["value"]
+                            request_param.ids.param_active.active = param["active"]
+                            self.request_tab_params.ids.request_params.add_widget(request_param)
 
 #--- END Project ---
     
