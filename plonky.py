@@ -20,6 +20,7 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.snackbar import MDSnackbar
 from kivymd.uix.button import MDFloatingActionButtonSpeedDial
 import os, json, string, random
+os.environ['KIVY_GL_BACKEND']='angle_sdl2'
 
 #Project
 Builder.load_file('kvs/project/add.kv')
@@ -467,7 +468,6 @@ class MainApp(MDApp):
             self.speed_dial.root_button_anim = True
             self.root.ids.app_screen.add_widget(self.speed_dial)
             
-
         self.build_collection(project)
 
         self.clear_tabs()

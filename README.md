@@ -1,2 +1,5 @@
 # plonky
-Python KiivyMD App for managing RESTful API's
+Python KivyMD App for managing RESTful API's
+
+# GIVING UP
+Kivy and KivyMD, just too flakey.
