@@ -18,6 +18,7 @@ from kivymd.uix.expansionpanel import MDExpansionPanel, MDExpansionPanelOneLine
 from kivymd.uix.tab import MDTabsBase
 from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.snackbar import MDSnackbar
+from kivymd.uix.button import MDFloatingActionButtonSpeedDial
 import os, json, string, random
 
 #Project
@@ -27,6 +28,10 @@ Builder.load_file('kvs/project/collection.kv')
 Builder.load_file('kvs/project/collection_item.kv')
 Builder.load_file('kvs/project/language_selection.kv')
 
+class AddCollection(MDBoxLayout):
+    pass
+class AddCollectionItem(MDBoxLayout):
+    pass
 class AddProject(MDBoxLayout):
     pass
 
@@ -87,20 +92,29 @@ class App(Widget):
 
 class MainApp(MDApp):
     add_project_dialog = None
+    add_project_collection_dialog = None
+    add_project_collection_item_dialog = None
+
     alert = None
     cfg_folder = "cfg/"
     projects_folder = "projects/"
     selected_icon = "application-outline"
+
     selected_collection = None
     selected_project = None
     selected_request = None
+
     projects = []
+    speed_dial = None
     speed_menu = {}
     rail_height = 200
     project_changed = False
 
     request_tab_globals = None
     request_tab_params = None
+    request_tab_auth = None
+    request_tab_headers = None
+    request_tab_body = None
 
     def build(self):
         self.title = "Plonky"
@@ -122,9 +136,14 @@ class MainApp(MDApp):
         self.request_tab_params = RequestTabParams()
         self.root.ids.request_tabs.add_widget(self.request_tab_params)
 
-        self.root.ids.request_tabs.add_widget(RequestTabAuth())
-        self.root.ids.request_tabs.add_widget(RequestTabHeaders())
-        self.root.ids.request_tabs.add_widget(RequestTabBody())
+        self.request_tab_auth = RequestTabAuth()
+        self.root.ids.request_tabs.add_widget(self.request_tab_auth)
+
+        self.request_tab_headers = RequestTabHeaders()
+        self.root.ids.request_tabs.add_widget(self.request_tab_headers)
+
+        self.request_tab_body = RequestTabBody()
+        self.root.ids.request_tabs.add_widget(self.request_tab_body)
 
         self.request_tab_globals = RequestTabGlobals()
         self.root.ids.request_tabs.add_widget(self.request_tab_globals)
@@ -232,7 +251,7 @@ class MainApp(MDApp):
             position = "center",
             width_mult = 4,
         )
-        self.request_type_menu.bind()
+        self.request_type_menu.bind()        
 
         self.load_projects()
 
@@ -286,8 +305,9 @@ class MainApp(MDApp):
         ).open()
 
     def close_alert(self, *args):
-        self.alert.dismiss()
-        self.alert = None
+        if self.alert:
+            self.alert.dismiss()
+            self.alert = None
 
     # Generate a random string, used for IDs and filenames
     def random_string(self):
@@ -302,7 +322,6 @@ class MainApp(MDApp):
         print("send")
 
 #--- Project ---
-
     def add_project_to_rail(self, project):
         card = ProjectCard(
             selected = False,
@@ -315,6 +334,10 @@ class MainApp(MDApp):
         self.selected_project = card
         
     def add_project(self):
+        if self.project_changed:
+            self.project_save_prompt("add_project")
+            return
+        
         if not self.add_project_dialog:
             layout = AddProject()
 
@@ -358,10 +381,60 @@ class MainApp(MDApp):
         self.add_project_dialog.open()
 
     def add_project_collection(self):
-        print("add collection")
+        if not self.add_project_collection_dialog:
+            layout = AddCollection()
 
-    def add_project_collection_item(self, id):
-        print("add collection item")
+            #Build the Add new project collection dialog box
+            self.add_project_collection_dialog = MDDialog(
+                title = "Add new collection",
+                content_cls = layout,
+                type = "custom",
+                buttons = [
+                    MDFlatButton(
+                        text = "CANCEL",
+                        theme_text_color = "Custom",
+                        text_color = self.theme_cls.primary_color,
+                        on_release = self.cancel_add_project_collection
+                    ),
+                    MDFlatButton(
+                        text = "OK",
+                        theme_text_color = "Custom",
+                        text_color = self.theme_cls.primary_color,
+                        on_release = self.create_project_collection
+                    )
+                ]
+            )
+        self.add_project_collection_dialog.open()
+
+    def add_project_collection_item(self):
+        if not self.selected_collection:
+            self.create_toast(f"Please select a collection first", "error")
+            return
+
+        if not self.add_project_collection_item_dialog:
+            layout = AddCollectionItem()
+
+            #Build the Add new project collection item dialog box
+            self.add_project_collection_item_dialog = MDDialog(
+                title = "Add new collection",
+                content_cls = layout,
+                type = "custom",
+                buttons = [
+                    MDFlatButton(
+                        text = "CANCEL",
+                        theme_text_color = "Custom",
+                        text_color = self.theme_cls.primary_color,
+                        on_release = self.cancel_add_project_collection_item
+                    ),
+                    MDFlatButton(
+                        text = "OK",
+                        theme_text_color = "Custom",
+                        text_color = self.theme_cls.primary_color,
+                        on_release = self.create_project_collection_item
+                    )
+                ]
+            )
+        self.add_project_collection_item_dialog.open()
 
     def add_project_lang_selected(self, text_item, icon):
         self.add_project_dialog.content_cls.ids.drop_item.set_item(text_item)
@@ -371,6 +444,47 @@ class MainApp(MDApp):
     # Build the project UI, the collections, etc
     def build_project_ui(self, project):
         self.root.ids.project.clear_widgets()
+        
+        if project["collections"]:
+            if self.speed_dial:
+                self.root.ids.app_screen.remove_widget(self.speed_dial)
+
+            self.speed_dial = MDFloatingActionButtonSpeedDial()
+            self.speed_dial.data = {
+                'Add collection': [
+                    'folder-plus-outline',
+                    "on_press", lambda x: self.add_project_collection()
+                ],
+                'Add request': [
+                    'cloud-plus-outline',
+                    "on_press", lambda x: self.add_project_collection_item()
+                ],
+                'Add project': [
+                    'shape-square-rounded-plus',
+                    "on_press", lambda x: self.add_project()
+                ]
+            }
+            self.speed_dial.root_button_anim = True
+            self.root.ids.app_screen.add_widget(self.speed_dial)
+            
+
+        self.build_collection(project)
+
+        self.clear_tabs()
+
+        for param in project["globals"]:
+            request_param = RequestTabParamsListItem()
+            request_param.ids.param_key.text = param["key"]
+            request_param.ids.param_value.text = param["value"]
+            request_param.ids.param_active.active = param["active"]
+            request_param.ids.param_active.bind(active=self.on_request_param_change)
+            self.request_tab_globals.ids.globals.add_widget(request_param)
+        
+        self.request_tab_globals.ids.param_add_btn.opacity = 1
+    
+    def build_collection(self, project):
+        self.root.ids.project.clear_widgets()
+        
         for collection_data in project["collections"]:
             collection = ProjectCollection()
                         
@@ -387,8 +501,9 @@ class MainApp(MDApp):
                             icon = icon_type
                         ),
                         IconRightWidget(
+                            id = item_data["id"],
                             icon = "close",
-                            on_release = lambda x, id=item_data["id"]: self.delete_project_collection_item_promt(id)
+                            on_release = lambda x: self.delete_project_collection_item_promt(x)
                         ),
                         id = item_data["id"],
                         text = item_data["name"],
@@ -397,38 +512,46 @@ class MainApp(MDApp):
                             title = f"{collection_data['name']} > {item_data['name']}",
                             type = item_data["type"].upper(),
                             url = item_data["url"]:
-                                self.select_project_item(x, title, type, url)
+                                self.select_project_collection_item(x, title, type, url)
                     )
                 )
 
                 collection.ids.collection_items.add_widget(item)
 
-            self.root.ids.project.add_widget(
-                MDExpansionPanel(
-                    icon = "folder-outline",
-                    content = collection,
-                    panel_cls = MDExpansionPanelOneLine (
-                        text = collection_data['name'],
-                        id = collection_data['id'],
-                        on_release = lambda x: self.select_project_collection(x)
-                    )
+            self.root.ids.project.add_widget(MDExpansionPanel(
+                icon = "folder-outline",
+                content = collection,
+                panel_cls = MDExpansionPanelOneLine (
+                    text = collection_data['name'],
+                    id = collection_data['id'],
+                    on_release = lambda x: self.select_project_collection(x)
                 )
-            )
+            ))
 
-        self.request_tab_params.ids.request_params.clear_widgets()
-        self.request_tab_globals.ids.globals.clear_widgets()
-
-        for param in project["globals"]:
-            request_param = RequestTabParamsListItem()
-            request_param.ids.param_key.text = param["key"]
-            request_param.ids.param_value.text = param["value"]
-            request_param.ids.param_active.active = param["active"]
-            request_param.ids.param_active.bind(active=self.on_request_param_change)
-            self.request_tab_globals.ids.globals.add_widget(request_param)
-        
     def cancel_add_project(self, *args):
         self.reset_add_project()
         self.add_project_dialog.dismiss()
+    def cancel_add_project_collection(self, *args):
+        self.reset_add_project_collection()
+        self.add_project_collection_dialog.dismiss()
+    def cancel_add_project_collection_item(self, *args):
+        self.reset_add_project_collection_item()
+        self.add_project_collection_item_dialog.dismiss()
+
+    def clear_tabs(self):
+        self.root.ids.request_type.opacity = 0
+        self.root.ids.request_url.opacity = 0
+
+        self.root.ids.current_project_item.title = "Please select a request"
+
+        self.request_tab_params.ids.request_params.clear_widgets()
+        self.request_tab_auth.ids.request_params.clear_widgets()
+        self.request_tab_headers.ids.request_params.clear_widgets()
+        self.request_tab_body.ids.request_params.clear_widgets()
+
+        self.root.ids.current_project_item.right_action_items = [
+            ["content-save-outline", lambda x: self.save_project()]
+        ]
 
     def close_save_alert(self, from_func, arg):
         self.alert.dismiss()
@@ -458,13 +581,37 @@ class MainApp(MDApp):
         self.projects.append(project)
 
         self.add_project_to_rail(project)
-
-        self.reset_add_project()
-        self.add_project_dialog.dismiss()
-        self.root.ids.speed_dial.close_stack()
+        
+        self.cancel_add_project()
+        self.speed_dial.close_stack()
 
         self.create_toast("Project created")
         self.project_changed = True
+
+    def create_project_collection(self, *args):
+        project = json.loads(self.selected_project.json)
+        project["collections"].append({"id": self.random_string(), "name": self.add_project_collection_dialog.content_cls.ids.text_collection_name.text, "items": []})
+        self.project_changed = True
+
+        self.build_collection(project)
+        self.selected_project.json = json.dumps(project)
+
+        self.cancel_add_project_collection(args)
+        self.speed_dial.close_stack()
+
+        self.create_toast(f"Project collection created")
+    
+    def create_project_collection_item(self, *args):
+        project = json.loads(self.selected_project.json)
+        self.project_changed = True
+
+        self.build_collection(project)
+        self.selected_project.json = json.dumps(project)
+
+        self.cancel_add_project_collection_item(args)
+        self.speed_dial.close_stack()
+
+        self.create_toast(f"Request created")
 
     # Delete the project
     def delete_project(self, *args):
@@ -478,6 +625,12 @@ class MainApp(MDApp):
                 self.root.ids.current_project.right_action_items = []
                 self.root.ids.project.clear_widgets()
                 self.root.ids.project_drawer.set_state("close")
+
+                self.request_tab_params.ids.request_params.clear_widgets()
+                self.request_tab_auth.ids.request_params.clear_widgets()
+                self.request_tab_headers.ids.request_params.clear_widgets()
+                self.request_tab_body.ids.request_params.clear_widgets()
+
                 self.close_alert()
 
                 self.create_toast("Project deleted")
@@ -486,12 +639,25 @@ class MainApp(MDApp):
             self.create_alert("Delete error", "Failed to delete the project")
 
     # Delete the collection item from the project
-    def delete_project_collection_item(self, id):
+    def delete_project_collection_item(self, item):
+        self.project_changed = True
+
+        project = json.loads(self.selected_project.json)
+        for collection in project["collections"]:
+            collection_key = 0
+            for collection_item in collection["items"]:
+                if (collection_item["id"] == item.id):
+                    project["collections"][collection_key]["items"].remove(collection_item)
+                collection_key += 1
+
+        self.build_collection(project)
+        self.clear_tabs()
+
         self.create_toast(f"Project collection request has been deleted", "warning")
         self.close_alert()
 
     # Prompt before deleting the collection item
-    def delete_project_collection_item_promt(self, id):
+    def delete_project_collection_item_promt(self, item):
         self.alert = MDDialog(
             title = "Delete collection request",
             text = "Are you sure?",
@@ -506,7 +672,7 @@ class MainApp(MDApp):
                     text = "YES",
                     theme_text_color = "Custom",
                     text_color = self.theme_cls.primary_color,
-                    on_release = lambda x, id = id: self.delete_project_collection_item(id)
+                    on_release = lambda x, id = id: self.delete_project_collection_item(item)
                 )
             ]
         )
@@ -585,6 +751,10 @@ class MainApp(MDApp):
 
     def reset_add_project(self):
         self.add_project_dialog.content_cls.ids.text_project.text = ""
+    def reset_add_project_collection(self):
+        self.add_project_collection_dialog.content_cls.ids.text_collection_name.text = ""
+    def reset_add_project_collection_item(self):
+        self.add_project_collection_item_dialog.content_cls.ids.text_collection_item_name.text = ""
 
     # Save the project
     def save_project(self, from_func = None, arg = None):
@@ -592,11 +762,8 @@ class MainApp(MDApp):
             self.create_toast("No project to save", "error")
             return
         
-        if self.alert:
-            self.alert.dismiss()
-            self.alert = None
+        self.close_alert()
 
-        self.project_changed = False
         project = json.loads(self.selected_project.json)
         
         if self.selected_collection:
@@ -615,6 +782,34 @@ class MainApp(MDApp):
                                                 "value": param.ids.param_value.text,
                                                 "active": param.ids.param_active.active
                                             })
+
+                                    collection_item["auth"] = []
+                                    for param in self.request_tab_auth.ids.request_params.children:
+                                        if param.ids.param_key.text and param.ids.param_value.text:
+                                            collection_item["auth"].append({
+                                                "key": param.ids.param_key.text,
+                                                "value": param.ids.param_value.text,
+                                                "active": param.ids.param_active.active
+                                            })
+
+                                    collection_item["headers"] = []
+                                    for param in self.request_tab_headers.ids.request_params.children:
+                                        if param.ids.param_key.text and param.ids.param_value.text:
+                                            collection_item["headers"].append({
+                                                "key": param.ids.param_key.text,
+                                                "value": param.ids.param_value.text,
+                                                "active": param.ids.param_active.active
+                                            })
+
+                                    collection_item["body"] = []
+                                    for param in self.request_tab_body.ids.request_params.children:
+                                        if param.ids.param_key.text and param.ids.param_value.text:
+                                            collection_item["body"].append({
+                                                "key": param.ids.param_key.text,
+                                                "value": param.ids.param_value.text,
+                                                "active": param.ids.param_active.active
+                                            })
+                            break
             except:
                 self.create_toast("Failed save the request parameters", "error")
 
@@ -631,11 +826,14 @@ class MainApp(MDApp):
         file = project["file"]
         del project["file"]
 
+        print(project["collections"])
+
         # create the project file
         with open(file, 'w') as fp:
             fp.write(json.dumps(project))
 
         self.create_toast("Project saved")
+        self.project_changed = False
 
         if from_func:
             func = getattr(self, from_func)
@@ -668,7 +866,6 @@ class MainApp(MDApp):
         self.root.ids.current_project.title = project["name"]
         self.root.ids.current_project.right_action_items = [
             [project["icon"]],
-            ["plus-circle-outline", lambda x: self.add_project_collection()],
             ["dots-vertical", lambda x: self.root.ids.project_drawer.set_state("open")]
         ]
 
@@ -676,13 +873,19 @@ class MainApp(MDApp):
         self.build_project_ui(project)
 
         self.root.ids.projects_drawer.set_state("close")
+
+        self.root.ids.current_project_item.right_action_items = [
+            ["content-save-outline", lambda x: self.save_project()]
+        ]
         
         self.create_toast(f"Project {project['name']} selected")
 
     def select_project_collection(self, collection):
         self.selected_collection = collection
 
-    def select_project_item(self, item, title, type, url):
+    def select_project_collection_item(self, item, title, type, url):
+        self.clear_tabs()
+
         self.root.ids.current_project_item.title = title
         self.root.ids.request_type.set_item(type)
         self.root.ids.request_url.hint_text = ""
@@ -691,7 +894,13 @@ class MainApp(MDApp):
 
         project = json.loads(self.selected_project.json)
 
-        self.request_tab_params.ids.request_params.clear_widgets()
+        self.root.ids.current_project_item.right_action_items = [
+            ["content-save-outline", lambda x: self.save_project()],
+            ["send-circle", lambda x: self.trigger_send()]
+        ]
+
+        self.root.ids.request_type.opacity = 1
+        self.root.ids.request_url.opacity = 1
 
         collection_id = self.selected_collection.id
         try:
@@ -706,10 +915,42 @@ class MainApp(MDApp):
                                 request_param.ids.param_active.active = param["active"]
                                 request_param.ids.param_active.bind(active=self.on_request_param_change)
                                 self.request_tab_params.ids.request_params.add_widget(request_param)
+
+                            for param in collection_item["auth"]:
+                                request_param = RequestTabParamsListItem()
+                                request_param.ids.param_key.text = param["key"]
+                                request_param.ids.param_value.text = param["value"]
+                                request_param.ids.param_active.active = param["active"]
+                                request_param.ids.param_active.bind(active=self.on_request_param_change)
+                                self.request_tab_auth.ids.request_params.add_widget(request_param)
+
+                            for param in collection_item["headers"]:
+                                request_param = RequestTabParamsListItem()
+                                request_param.ids.param_key.text = param["key"]
+                                request_param.ids.param_value.text = param["value"]
+                                request_param.ids.param_active.active = param["active"]
+                                request_param.ids.param_active.bind(active=self.on_request_param_change)
+                                self.request_tab_headers.ids.request_params.add_widget(request_param)
+
+                            for param in collection_item["body"]:
+                                request_param = RequestTabParamsListItem()
+                                request_param.ids.param_key.text = param["key"]
+                                request_param.ids.param_value.text = param["value"]
+                                request_param.ids.param_active.active = param["active"]
+                                request_param.ids.param_active.bind(active=self.on_request_param_change)
+                                self.request_tab_body.ids.request_params.add_widget(request_param)
         except:
-            if not collection_item is None:
+            if collection_item != None:
                 collection_item["params"] = []
-            self.create_toast("Failed to load request parameters", "error")
+                collection_item["auth"] = []
+                collection_item["headers"] = []
+                collection_item["body"] = []
+            self.create_toast("Failed to fully process the project", "error")
+
+        self.request_tab_params.ids.param_add_btn.opacity = 1
+        self.request_tab_auth.ids.param_add_btn.opacity = 1
+        self.request_tab_headers.ids.param_add_btn.opacity = 1
+        self.request_tab_body.ids.param_add_btn.opacity = 1
 
 #--- END Project ---
     
@@ -733,14 +974,50 @@ class MainApp(MDApp):
     
 #--- END Request params ---
 
+#--- Request auth ---
+
+    # Add a request auth to the project
+    def add_request_auth(self, btn):
+        if not self.selected_project:
+            self.create_toast("No project selected", "error")
+            return
+        
+        self.request_tab_auth.ids.request_params.add_widget(RequestTabParamsListItem(id=self.selected_project.id))
+
+#--- END Request auth ---
+
+#--- Request headers ---
+
+    # Add a request headers to the project
+    def add_request_header(self, btn):
+        if not self.selected_project:
+            self.create_toast("No project selected", "error")
+            return
+        
+        self.request_tab_headers.ids.request_params.add_widget(RequestTabParamsListItem(id=self.selected_project.id))
+
+#--- END Request headers ---
+
+#--- Request body ---
+
+    # Add a request headers to the project
+    def add_request_body(self, btn):
+        if not self.selected_project:
+            self.create_toast("No project selected", "error")
+            return
+        
+        self.request_tab_body.ids.request_params.add_widget(RequestTabParamsListItem(id=self.selected_project.id))
+
+#--- END Request body ---
+
 #--- Globals ---
 
-    # Add a request parameter to the project
+    # Add a request global to the project
     def add_global(self, btn):
         if not self.selected_project:
             self.create_toast("No project selected", "error")
             return
-        print(self.selected_project)
+        
         self.request_tab_globals.ids.globals.add_widget(RequestTabParamsListItem(id=self.selected_project.id))
 
 #--- END Globals ---

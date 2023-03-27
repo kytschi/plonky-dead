@@ -1,5 +1,6 @@
 <App>:
     MDScreen:
+        id: app_screen
         size: root.size
         size_hint: 1, 1
         
@@ -60,8 +61,7 @@
                                     anchor_title: "left"
                                     title: "Request"
                                     pos_hint: {'top': 1}
-                                    right_action_items: [["content-save-outline", lambda x: app.save_project()], ["send-circle", lambda x: app.trigger_send()]]
-                        
+                                                            
                                 BoxLayout:
                                     size_hint: 1, None
                                     orientation: 'horizontal'
@@ -74,6 +74,7 @@
                                         
                                         MDDropDownItem:
                                             id: request_type
+                                            opacity: 0
                                             hint_text: "GET"
                                             text: "GET"
                                             size_hint: 1, None
@@ -82,6 +83,7 @@
 
                                     MDTextField:
                                         id: request_url
+                                        opacity: 0
                                         hint_text: "Please enter the URL"
                                         size_hint: .7, None
                                         pos_hint: {'top': 1}

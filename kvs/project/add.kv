@@ -4,7 +4,6 @@
     height: "70dp"
         
     MDBoxLayout:
-        id: anchor_layout
         orientation: "vertical"
         MDTextField:
             id: text_project
@@ -22,6 +21,18 @@
     height: "70dp"
         
     MDBoxLayout:
-        id: anchor_layout
         orientation: "vertical"
-    
+        MDTextField:
+            id: text_collection_name
+            hint_text: "Name"
+
+<AddCollectionItem>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: "70dp"
+        
+    MDBoxLayout:
+        orientation: "vertical"
+        MDTextField:
+            id: text_collection_item_name
+            hint_text: "Name"
